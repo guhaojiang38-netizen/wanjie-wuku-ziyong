@@ -1,5 +1,4 @@
-import { spaceMethods, powerSpace } from './src/space-controller.js';
-import { isTaishi } from './src/taishi.js';
+const powerSpace = () => 'wuku';
 import { resolveTaskConnection, saveTaskRoutes, accountSecrets } from './src/host.js';
 import { RuntimeLog } from './src/runtime-log.js';
 import { withBuiltinCatalog, upgradeBuiltinPower, builtinPowerId } from './src/builtin-worldbook.js';
@@ -13,7 +12,7 @@ import { installAIActivity } from './src/ai-activity.js';
 import { outboxSummary } from './src/outbox.js';
 import { creationMethods } from './src/creation.js';
 import { terminalMethods } from './src/terminal.js';
-import { MMLC_ENTRY, isMmlc } from './src/mmlc.js';
+import { isMmlc } from './src/mmlc.js';
 import { MODULE_ID, VERSION, assert, amount, normAmount, hash, stable, clone, uid, key, importBook, createPower, upgradeResources, chatHashes, historyChanged, continuesMessage, storyText, narrativeMessages, builtInOperations, normalizeOperation, applyOperation, parseJSON, extractPanelBalances, validateState } from './src/core.js';
 import { getContext, getSettings, getApiKey, saveSettings, getConnectionProfiles, saveConnectionProfile, applyConnectionProfile, deleteConnectionProfile, resolveAccount, events, scope, worldInfoNames, loadBook, ChatStore, installInjection, verifyRoleSaved, verifyReceiptSaved } from './src/host.js';
 import { ModelConnection, operationPrompt, reconcilePrompt, roleMappingPrompt, endpoints, chooseListedModel } from './src/model.js';
@@ -550,10 +549,6 @@ export class WukuApp {
       case 'adapter-confirm': return this.confirmAdapter();
       case 'refresh': return this.refresh();
       case 'space-wuku': this.ui.space = 'wuku'; this.ui.tab = 'management'; this.powerId = Object.values(this.store.read().powers).find(p => powerSpace(p)==='wuku')?.id; this.plans = []; this.selected = null; return this.refresh();
-      case 'space-mmlc': return this.action('add-mmlc', {});
-      case 'space-taishi': return this.openTaishi();
-      case 'taishi-section': return this.selectTaishiSection(data.section);
-      case 'taishi-setup': return this.initializeTaishi();
       case 'save-task-routes': {
         assert(!this.busy&&!this.mainBusy&&!this.committing,'请等待当前任务结束');
         const routes=Object.fromEntries(Object.entries(data.values||{}).filter(([k])=>k.startsWith('route:')).map(([k,v])=>[k.slice(6),v]));
@@ -562,22 +557,6 @@ export class WukuApp {
       case 'select-power': this.ui.space = powerSpace(this.store.read().powers[data.id]); this.powerId = data.id; this.plans = []; this.selected = null; return this.refresh();
       case 'select-operation': this.selected = this.ui.view.operations.find(op => op.id === data.id); return this.refresh();
       case 'manage': return this.manage();
-      case 'add-mmlc': {
-        assert(!this.busy && !this.mainBusy && !this.committing, '请等待当前操作完成');
-        const s = this.ensureStable(), registered = createPower(MMLC_ENTRY);
-        await this.store.transact(next => {
-          if (!next.powers[registered.id]) {
-            registered.archiveStart = Math.max(0, s.ctx.chat.length - 24);
-            registered.autoArchiveReview = false;
-            autoAssociateAdapter(registered,this.associationLibrary());
-            next.powers[registered.id] = registered;
-            if (!Object.keys(s.state.powers).length) { next.syncCursor = s.ctx.chat.length; next.managementStart = s.ctx.chat.length; next.historyAnchor = s.hashes; }
-            this.record(next, '接入漫漫长路成果统计', ['从近期正文整理，确认后保存'], 'setup', registered.id);
-          }
-        }, { captured: { chatKey: s.chatKey, stateId: s.state.id, revision: s.state.revision } });
-        this.powerId = registered.id; this.ui.space = 'mmlc'; this.ui.mmlcSection = null; this.ui.tab = 'management'; this.ui.closeDialog(); this.refresh();
-        return this.notice('漫漫长路统计已接入。点击AI整理当前情况即可；未导入世界书或自动调用API。');
-      }
       case 'role-read': return this.readRole();
       case 'role-save': return this.saveRole(data);
       case 'role-extra-book': assert(this.roleDraft && data.values.roleBook, '请先读取角色并选择补充世界书'); this.roleDraft = await this.role.extraBook(this.roleDraft, data.values.roleBook); return this.manage();
@@ -779,7 +758,7 @@ export class WukuApp {
   }
 }
 
-Object.assign(WukuApp.prototype, spaceMethods, aiWorldbookMethods, narrativeMethods, managementMethods, workflowMethods, archiveMethods, archiveToolMethods, archiveReviewMethods, archiveMemoryMethods, playerHomeMethods, terminalMethods, creationMethods, adapterMethods, adapterLibraryMethods);
+Object.assign(WukuApp.prototype, aiWorldbookMethods, narrativeMethods, managementMethods, workflowMethods, archiveMethods, archiveToolMethods, archiveReviewMethods, archiveMemoryMethods, playerHomeMethods, terminalMethods, creationMethods, adapterMethods, adapterLibraryMethods);
 
 installAIActivity(WukuApp.prototype);
 

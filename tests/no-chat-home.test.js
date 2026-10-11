@@ -1,0 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fixture} from './mvu-fixture.js';
+import {WorkbenchUI} from '../src/ui.js';
+test('refresh without a stable chat renders a welcome state instead of throwing twice',()=>{const f=fixture();f.ctx.chatId=null;assert.doesNotThrow(()=>f.app.refresh());assert.equal(f.app.ui.view.noChat,true);assert.equal(f.app.ui.view.state,null);assert.equal(f.app.memoryDiagnostics(),null);clearTimeout(f.app.roleTimer);});
+test('welcome has concrete features and no unbound mutation buttons or fake statistics',()=>{const ui=Object.create(WorkbenchUI.prototype);ui.panel={innerHTML:''};ui.render({state:null,noChat:true,settings:{mode:'off'}});const html=ui.panel.innerHTML;assert.match(html,/插件已就绪/);assert.match(html,/先打开一个角色聊天/);assert.match(html,/随身福地/);assert.match(html,/玄黄舰/);assert.match(html,/data-action="settings"/);assert.doesNotMatch(html,/data-action="(?:manage|space-mmlc|export|generate|player-auto)"/);assert.doesNotMatch(html,/项成果|当前接入/);});
+test('valid chat read failures are shown as failures and escaped, not mistaken for no character',()=>{const f=fixture();f.store.read=()=>{throw Error('<script>档案损坏</script>');};assert.doesNotThrow(()=>f.app.refresh());assert.equal(f.app.ui.view.noChat,false);const ui=Object.create(WorkbenchUI.prototype);ui.panel={innerHTML:''};ui.render(f.app.ui.view);assert.match(ui.panel.innerHTML,/当前档案暂不可读取/);assert.match(ui.panel.innerHTML,/&lt;script&gt;/);assert.doesNotMatch(ui.panel.innerHTML,/<script>/);});

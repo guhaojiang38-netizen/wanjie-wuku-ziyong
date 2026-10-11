@@ -1,0 +1,17 @@
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { assert, importBook, inferResources } from '../src/core.js';
+import { configuredProfiles, managementProfile, PROFILE_FAMILIES } from '../src/management-profiles.js';
+assert(process.argv[2] && process.argv[3], 'Usage: node scripts/audit-management-coverage.mjs original-worldbook.json output-directory');
+const raw = await readFile(process.argv[2]), data = configuredProfiles();
+assert(createHash('sha256').update(raw).digest('hex') === data.sourceSha256, '原世界书已变化，请先重新审查配置，不沿用旧覆盖结论');
+const entries = importBook(JSON.parse(raw.toString('utf8').replace(/^\uFEFF/,'')), '万界武库V4.1');
+const rows = entries.map(e => { const p = managementProfile(e); assert(p.verified, `未配置：${e.name}`); return { entryId:e.entryId, name:e.name, role:p.role, parent:p.parent, family:PROFILE_FAMILIES[p.family], contentHash:p.contentHash, templates:p.templates, workflows:p.workflows, resources:inferResources(e).map(r=>r.name), variantGroup:p.variantGroup, note:p.note, managementConfigured:true, realHostTested:false }; });
+const summary = { source:data.source, sourceSha256:data.sourceSha256, total:rows.length, primary:rows.filter(r=>r.role==='primary').length, support:rows.filter(r=>r.role==='support').length, templates:rows.reduce((n,r)=>n+r.templates.length,0), verified:rows.length, scope:'management configuration only; no automatic capability-use or settlement-engine completeness claim', realHostTested:false };
+const escape = value => String(value).replaceAll('|','\\|').replaceAll('\n',' ');
+const table = rows.map(r => `| ${escape(r.name)} | ${r.role==='support' ? `辅助${r.parent ? `→${escape(r.parent)}` : '→全局约束'}` : r.family} | ${escape(r.templates.map(t=>t.label).join('、') || '随主词条，不独立建档')} | ${r.workflows.map(w=>w==='cycle'?'周期':'模拟候选').join('、') || '通用记录'} | ${escape(r.resources.join('、') || '无固定数值资源')} | ${escape(r.note)} |`).join('\n');
+const md = `# 万界武库V4.1 · 全词条管理覆盖表\n\n原世界书 ${summary.total} 条：${summary.primary} 条主能力（包含两个择一的太始天版本）、${summary.support} 条辅助规则；${summary.templates} 个记录模板，全部有对应原文字段或能力段落依据。文件来源SHA256：${summary.sourceSha256}。\n\n“覆盖”只表示管理方式、模板与边界已配置，不代表数值、概率、奖励或条件判断已经自动完成。能力使用留在正文；模板不自动建立事实或发奖。辅助规则随主词条选入；不同正文版本和未知词条回退通用记录，不能凭名字沿用专用字段。\n\n资源字段只列现有明确可读余额／次数；非货币的数量、成长和资格不能当余额。修正了当前重点、当前文明节点、当前位面与落点误识别资源的问题。已保存的历史自定义资源不自动删除或改值；若旧档案已有误识别字段，须另行核对迁移。\n\n全表是本地静态配置证据，尚无真实酒馆、真实模型语义或用户验收证明。余额与资产继续由原账本／MVU管理；周期和模拟档案只记录，不自动结算。\n\n| 词条 | 类型／归属 | 可选记录模板 | 档案建议 | 已识别数值资源 | 实现边界 |\n| --- | --- | --- | --- | --- | --- |\n${table}\n\n下一道门：在获授权的真实酒馆验证模板、主请求承接、旧交易和MVU兼容；再按实际失败决定补充哪种专用管理或结算机制。\n`;
+const dir = resolve(process.argv[3]);await mkdir(dir,{recursive:true});
+await writeFile(resolve(dir,'第三阶段-全词条覆盖.json'),JSON.stringify({summary,entries:rows},null,2),'utf8');
+await writeFile(resolve(dir,'第三阶段-全词条覆盖表.md'),md,'utf8');process.stdout.write(JSON.stringify(summary));

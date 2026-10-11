@@ -1,0 +1,41 @@
+{
+  "format": "wjwk-adapter",
+  "schemaVersion": 1,
+  "id": "original.artisan_mark",
+  "version": "1.0.0",
+  "name": "百艺印记适配",
+  "description": "自编词条接入示例，仅登记结构，生成引擎尚未启用。",
+  "target": {
+    "primaryHashes": [
+      "ee3db61369ce940d"
+    ]
+  },
+  "records": [
+    {
+      "id": "arts",
+      "label": "技艺",
+      "description": "实际掌握的技艺与练习进展",
+      "fields": [
+        {
+          "id": "progress",
+          "label": "当前进展",
+          "type": "text",
+          "description": "保留正文明确的程度、进展与限制"
+        }
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "practice",
+      "kind": "develop",
+      "label": "拟定练习路径",
+      "instruction": "围绕已掌握基础拟定练习路径，不提前授予能力或完成进展。",
+      "ruleQuote": "百艺印记可以围绕已学技艺拟定练习路径，不能凭空授",
+      "output": "plan",
+      "recordIds": [
+        "arts"
+      ]
+    }
+  ]
+}

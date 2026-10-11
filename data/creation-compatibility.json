@@ -1,0 +1,17 @@
+[
+  {
+    "id": "wuku.blue",
+    "fromDigest": "075a56cd77f1bb1d",
+    "operationsDigest": "17c6d76354017063"
+  },
+  {
+    "id": "wuku.inventory",
+    "fromDigest": "7f70ef788a24c860",
+    "operationsDigest": "02126c01b38ef5cf"
+  },
+  {
+    "id": "wuku.companion",
+    "fromDigest": "f9bc80a847a2418c",
+    "operationsDigest": "f9fb24a19035b3a5"
+  }
+]

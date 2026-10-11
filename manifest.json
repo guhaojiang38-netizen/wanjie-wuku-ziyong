@@ -1,0 +1,10 @@
+{
+  "display_name": "万界武库自用版",
+  "loading_order": 90,
+  "js": "index.js",
+  "css": "style.css",
+  "author": "万界武库项目（原作）／自用改版",
+  "version": "1.0.0-ziyong.1",
+  "auto_update": false,
+  "minimum_client_version": "1.12.14"
+}

@@ -1,0 +1,31 @@
+import { createServer } from 'node:http';
+import { readFile,writeFile,mkdir } from 'node:fs/promises';
+import { resolve,extname } from 'node:path';
+import { createRequire } from 'node:module';
+import assert from 'node:assert/strict';
+const require=createRequire(process.env.WJWK_NODE_MODULES+'/package.json');const {chromium}=require('playwright');
+const server=createServer(async(req,res)=>{try{const path=resolve('.','.'+new URL(req.url,'http://local').pathname);if(!path.startsWith(process.cwd()))throw Error('path');res.setHeader('Content-Type',{'.js':'text/javascript','.css':'text/css','.html':'text/html'}[extname(path)]||'application/octet-stream');res.end(await readFile(path));}catch{res.writeHead(404);res.end();}});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const out=process.env.WJWK_SCREENSHOTS;await mkdir(out,{recursive:true});let browser;
+try{
+ browser=await chromium.launch({headless:true,executablePath:process.env.WJWK_BROWSER_EXECUTABLE});const page=await browser.newPage({viewport:{width:1400,height:980}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(`http://127.0.0.1:${server.address().port}/tests/preview.html`);await page.locator('[data-action="toggle"]').click();
+ await page.evaluate(()=>{const app=globalThis.wanjie_wuku_general_instance,ctx=SillyTavern.getContext();ctx.getWorldInfoNames=()=>['伙伴设定','备用设定'];ctx.loadWorldInfo=async name=>({entries:{1:{uid:1,comment:'伙伴能力',content:'可切换实体与灵体。'},2:{uid:2,comment:'未公开',content:'<script>window.BAD=true</script>',disable:true}}});ctx.executeSlashCommandsWithOptions=async()=>({pipe:'["伙伴设定"]'});});
+ await page.evaluate(()=>globalThis.wanjie_wuku_general_instance.openAIWorldbooks());
+ await page.locator('[data-action="ai-ref-book"]').filter({hasText:'伙伴设定'}).click();
+ await page.waitForFunction(()=>document.querySelectorAll('[data-ai-ref-entry]').length===2&&!document.querySelector('[data-action="ai-ref-save"]').disabled);
+ await page.locator('[data-ai-ref-group]').evaluate(e=>e.open=true);
+ assert.equal(await page.locator('[data-ai-ref-entry]:checked').count(),1);
+ await page.locator('[data-ai-ref-entry][value="2"]').check();
+ await page.locator('[data-action="ai-ref-preview"]').click();await page.locator('[data-ai-ref-preview]').waitFor();
+ assert.ok((await page.locator('[data-ai-ref-preview]').textContent()).includes('<script>'));assert.equal(await page.evaluate(()=>window.BAD),undefined);
+ await page.screenshot({path:out+'/references-desktop.png'});
+ await page.locator('[data-action="ai-ref-save"]').click();await page.waitForFunction(()=>document.querySelector('.wjwk-modal').hidden);
+ assert.deepEqual(await page.evaluate(()=>globalThis.wanjie_wuku_general_instance.store.read().aiWorldbooks.books[0].entryIds),['1','2']);
+ await page.evaluate(()=>globalThis.wanjie_wuku_general_instance.openAIWorldbooks());await page.locator('[data-action="ai-ref-book"]').filter({hasText:'伙伴设定'}).click();await page.locator('[data-action="ai-ref-book"]').filter({hasText:'伙伴设定'}).click();
+ await page.waitForFunction(()=>document.querySelectorAll('[data-ai-ref-entry]:checked').length===1);
+ await page.locator('[data-action="ai-ref-mode"][data-mode="card"]').click();await page.waitForFunction(()=>!document.querySelector('[data-action="ai-ref-save"]').disabled);
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:out+'/references-mobile.png'});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await page.locator('[data-action="dialog-close"]').click();assert.equal(await page.evaluate(()=>globalThis.wanjie_wuku_general_instance.referenceDraft),null);
+ assert.deepEqual(errors,[]);await writeFile(out+'/browser-evidence.json',JSON.stringify({mockHost:true,manualSelection:true,previewEscaped:true,reselect:true,followCard:true,mobile390:true,realModelCalls:0,errors},null,2));console.log('Worldbook reference browser checks passed');
+}finally{await browser?.close();server.close();}

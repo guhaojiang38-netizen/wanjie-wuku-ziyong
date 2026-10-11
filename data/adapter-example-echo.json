@@ -1,0 +1,41 @@
+{
+  "format": "wjwk-adapter",
+  "schemaVersion": 1,
+  "id": "original.echo_compass",
+  "version": "1.0.0",
+  "name": "回声罗盘适配",
+  "description": "自编词条接入示例，仅登记结构，生成引擎尚未启用。",
+  "target": {
+    "primaryHashes": [
+      "43b2b61df9894863"
+    ]
+  },
+  "records": [
+    {
+      "id": "clues",
+      "label": "线索",
+      "description": "已实际查明的线索与调查进度",
+      "fields": [
+        {
+          "id": "finding",
+          "label": "调查结果",
+          "type": "text",
+          "description": "保留明确结果、未知部分和限制原文"
+        }
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "investigate",
+      "kind": "investigate",
+      "label": "调查线索",
+      "instruction": "结合当前目标拟定调查方向，未知信息保持未知。",
+      "ruleQuote": "回声罗盘可以调查残留信息，不能获知尚未发",
+      "output": "information",
+      "recordIds": [
+        "clues"
+      ]
+    }
+  ]
+}

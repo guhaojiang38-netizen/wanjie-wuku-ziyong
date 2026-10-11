@@ -1,0 +1,11 @@
+{
+  "name": "wanjie-wuku-general-extension",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check src/archive-review.js && node --check src/archive-memory.js && node --check src/archives.js && node --check src/management-profiles-data.js && node --check tests/profiles-browser.mjs && node --check scripts/build-management-profiles.mjs && node --check scripts/audit-management-coverage.mjs && node --check src/management-profiles.js && node --check src/profile-view.js && node --check src/workflow.js && node --check tests/workflow-browser.mjs && node --check src/management.js && node --check tests/management-browser.mjs && node --check index.js && node --check src/narrative.js && node --check src/narrative-controller.js && node --check src/core.js && node --check src/receipt.js && node --check src/host.js && node --check src/model.js && node --check src/ui.js && node --check src/mvu.js && node --check tests/mock-host.js && node --check tests/browser-smoke.mjs && node --check src/creation.js && node --check src/creation-presets.js && node --check tests/creation-browser.mjs && node --check src/specialized-records.js && node --check src/creation-results.js && node --check tests/statistics-links-browser.mjs"
+  },
+  "license": "MIT"
+}

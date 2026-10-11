@@ -39,9 +39,24 @@ export function parseSettle(text) {
 }
 export function buildTimeline(chat = []) {
   const floors = [], warnings = [], cur = { 淫乱度: null, 渴慕值: null, 沉溺值: null, 禁欲蓄能: null }, timers = new Map(), marks = new Map();
-  let overflow = 0, pattern = null, rose = null, anon = 0;
+  let overflow = 0, pattern = null, rose = null, anon = 0, day = null;
+  const xu = [], anonLog = [], dark = new Map(), lenders = new Map();
   chat.forEach((m, i) => {
-    if (!m || m.is_user || m.is_system) return; const p = parseSettle(m.mes ?? m.content ?? ''); if (!p) return;
+    if (!m || m.is_system) return; const text = String(m.mes ?? m.content ?? '');
+    const dm = text.match(/(\d{4})[.\-/年](\d{1,2})[.\-/月](\d{1,2})/) || text.match(/第\s*(\d+)\s*天/); if (dm) day = dm[3] ? `${dm[1]}.${String(dm[2]).padStart(2,'0')}.${String(dm[3]).padStart(2,'0')}` : `第${dm[1]}天`;
+    if (m.is_user) return; const p = parseSettle(text); if (!p) return;
+    const all = p.raw.gains + '\n' + p.raw.changes, dayKey = day || '未标日期';
+    for (const x of all.matchAll(/续[·・]?\s*(体力|精神)?[^\n]*?借自[:：]\s*([^）)\s，。]+)/g)) { xu.push({ floor: i, day: dayKey, stat: x[1] || '', who: x[2] }); lenders.set(x[2], { name: x[2], why: '借过力', floor: i }); }
+    if (!xu.some(x => x.floor === i) && /今日[“"「]?续[”"」]?已用/.test(all)) xu.push({ floor: i, day: dayKey, stat: '', who: '' });
+    for (const x of all.matchAll(/(亲密|暧昧|接吻|确认关系|关系)[^\n]*?[:：]\s*([^\s，。；、（(]+)/g)) if (!/某人|无|暂无/.test(x[2])) lenders.set(x[2], { name: x[2], why: x[1], floor: i });
+    for (let k = 0; k < p.anon; k++) anonLog.push({ floor: i, day: dayKey });
+    for (const line of p.raw.changes.split('\n')) {
+      const h = line.match(/^\s*暗潮[·・]\s*([^\s燥／/]+)/); if (!h) continue;
+      const who = h[1], named = !/^(某人|有人|匿名)/.test(who), heat = line.match(/燥热\s*\d+\s*(?:->|→)\s*(\d+)/), tier = line.match(/瘾阶[·・]?\s*([闻拿看瘾])/), st = line.match(/藏品[:：]\s*([^／/\n]*)/);
+      const key = named ? who : '匿名#' + i, prev = named ? dark.get(key) || {} : {};
+      const items = st ? st[1].split(/[、，,]/).map(t => t.trim()).filter(t => t && !/^(无|暂无)$/.test(t) && !/\[/.test(t)).length : null;
+      dark.set(key, { name: who, named, heat: heat ? +heat[1] : prev.heat ?? null, tier: tier ? tier[1] : prev.tier || '', items: items ?? prev.items ?? 0, floor: i });
+    }
     for (const d of p.deltas) {
       if (cur[d.axis] !== null && cur[d.axis] !== d.from) warnings.push(`第${i}楼：${d.axis} 上一楼是 ${cur[d.axis]}，这里写的起点却是 ${d.from}`);
       if (d.to > AXES[d.axis].max || d.to < 0) warnings.push(`第${i}楼：${d.axis} ${d.to} 超出范围 0—${AXES[d.axis].max}`);
@@ -57,7 +72,9 @@ export function buildTimeline(chat = []) {
     for (const b of p.marks) marks.set(b.part, { ...b, floor: i });
     floors.push({ floor: i, values: { ...cur }, overflow, deltas: p.deltas });
   });
-  return { floors, warnings, current: { ...cur }, overflow, pattern, rose, anon, timers: [...timers.values()], marks: [...marks.values()] };
+  for (const t of timers.values()) if (!/某人|有人/.test(t.who) && !lenders.has(t.who)) lenders.set(t.who, { name: t.who, why: t.kind, floor: t.floor });
+  const today = day || '未标日期';
+  return { floors, warnings, current: { ...cur }, overflow, pattern, rose, anon, timers: [...timers.values()], marks: [...marks.values()], xu, xuToday: xu.some(x => x.day === today), today, anonLog, anonToday: anonLog.filter(a => a.day === today).length, dark: [...dark.values()], lenders: [...lenders.values()].sort((a, b) => b.floor - a.floor).slice(0, 8) };
 }
 export function stageOf(axis, v) { const st = AXES[axis].stages; let s = st[0], next = null; for (let k = 0; k < st.length; k++) if (v >= st[k][0]) { s = st[k]; next = st[k + 1] || null; } return { name: s[1], from: s[0], next }; }
 // ---- 玫瑰印记 SVG ----
@@ -77,7 +94,7 @@ export function roseMarkSVG(value = 0, { overflow = 0, pattern = '', size = 220 
     const a = (k / Math.max(1, nOuter)) * 360 + 15, r = lerp(9, 30, openK);
     petals.push(`<path transform="rotate(${a.toFixed(1)} 110 92)" d="M110 92 C${(110 - r * 0.55).toFixed(1)} ${(92 - r * 0.4).toFixed(1)} ${(110 - r * 0.35).toFixed(1)} ${(92 - r * 1.05).toFixed(1)} 110 ${(92 - r).toFixed(1)} C${(110 + r * 0.35).toFixed(1)} ${(92 - r * 1.05).toFixed(1)} ${(110 + r * 0.55).toFixed(1)} ${(92 - r * 0.4).toFixed(1)} 110 92Z" fill="${col}" fill-opacity="${lerp(0.08, 0.32, openK).toFixed(2)}" stroke="${col}" stroke-width="${sw.toFixed(2)}"/>`);
   }
-  const bud = P < 1 ? '' : `<path d="M110 ${lerp(84, 78, openK)} C${lerp(104, 98, openK)} ${lerp(88, 86, openK)} 102 98 110 101 C118 98 ${lerp(116, 122, openK)} ${lerp(88, 86, openK)} 110 ${lerp(84, 78, openK)}Z" fill="${col}" fill-opacity=".55" stroke="${col}" stroke-width="${sw}"/><path d="M110 86 c3 2 3 6 0 8 c-3-2-3-6 0-8" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width=".8"/>`;
+  const budS = st === 1 ? 1.9 - 0.5 * t : 1, bud = P < 1 ? '' : `<g transform="translate(110 92) scale(${budS.toFixed(2)}) translate(-110 -92)"><path d="M110 ${lerp(84, 78, openK)} C${lerp(104, 98, openK)} ${lerp(88, 86, openK)} 102 98 110 101 C118 98 ${lerp(116, 122, openK)} ${lerp(88, 86, openK)} 110 ${lerp(84, 78, openK)}Z" fill="${col}" fill-opacity=".55" stroke="${col}" stroke-width="${sw}"/><path d="M110 86 c3 2 3 6 0 8 c-3-2-3-6 0-8" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width=".8"/></g>`;
   const stemLen = lerp(20, 50, Math.min(1, P / 2));
   const stem = `<path d="M110 ${P < 1 ? 80 : 101} C${110 - 4} ${110} ${110 + 4} ${110 + stemLen * 0.6} 110 ${101 + stemLen}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" opacity="${op}"/>`;
   const leaves = P < 1.5 ? '' : `<path d="M110 ${118} c-10-6-18-2-20 4 c8 2 14 0 20-4Z M110 ${128} c10-6 18-2 20 4 c-8 2-14 0-20-4Z" fill="${col}" fill-opacity=".35" stroke="${col}" stroke-width="${sw * 0.7}"/>`;
@@ -101,6 +118,18 @@ export function rosePanelHTML(tl) {
   const timers = tl.timers.length ? tl.timers.sort((a, b) => a.days - b.days).map(t => `<li class="${t.days <= 1 ? 'is-urgent' : ''}"><b>${esc(t.kind)}</b> · ${esc(t.who)} <span>剩 ${t.days} 天</span></li>`).join('') : '<li class="wjwk-muted">没有生效中的锁痕或潮印</li>';
   const marks = tl.marks.length ? tl.marks.map(m => `<li>${MARK_ICON}<span>${esc(m.part)} · ${esc(m.style)}</span>${m.days !== null ? `<em class="${m.days <= 1 ? 'is-urgent' : ''}">${m.days} 天</em>` : ''}</li>`).join('') : '<li class="wjwk-muted">暂无身体印记</li>';
   const warn = tl.warnings.length ? `<details class="wjwk-rose-warn" open><summary>账目可能不一致（${tl.warnings.length}）</summary><ul>${tl.warnings.slice(-12).map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>` : '';
-  return `<div class="wjwk-rose"><section class="wjwk-rose-hero">${roseMarkSVG(kv, { overflow: tl.overflow, pattern: tl.pattern || '' })}<div><h3>玫瑰印记</h3><p>${esc(tl.rose || '小腹·淡玫瑰细线（可见）')}</p><p>阶段：<b>${esc(stageOf('渴慕值', kv).name)}</b>${tl.pattern ? ` · 样式：${esc(tl.pattern)}` : ''}</p><p class="wjwk-muted">已解析 ${tl.floors.length} 楼结算 · 匿名“有人在想着你” ${tl.anon} 次</p><ul class="wjwk-rose-marks">${marks}</ul></div></section>${warn}<section><h3>成长进度</h3>${['淫乱度', '渴慕值', '沉溺值', '禁欲蓄能'].map(bar).join('')}</section><section><h3>锁痕 / 潮印</h3><ul class="wjwk-rose-timers">${timers}</ul></section><p class="wjwk-muted">数据只从每楼的 &lt;WJWK-settle&gt; 读取，不改角色变量和正文。</p></div>`;
+  return `<div class="wjwk-rose"><section class="wjwk-rose-hero">${roseMarkSVG(kv, { overflow: tl.overflow, pattern: tl.pattern || '' })}<div><h3>玫瑰印记</h3><p>${esc(tl.rose || '小腹·淡玫瑰细线（可见）')}</p><p>阶段：<b>${esc(stageOf('渴慕值', kv).name)}</b>${tl.pattern ? ` · 样式：${esc(tl.pattern)}` : ''}</p><p class="wjwk-muted">已解析 ${tl.floors.length} 楼结算 · 匿名“有人在想着你” ${tl.anon} 次</p><ul class="wjwk-rose-marks">${marks}</ul></div></section>${warn}<section><h3>成长进度</h3>${['淫乱度', '渴慕值', '沉溺值', '禁欲蓄能'].map(bar).join('')}</section>${xuCard(tl)}${darkCard(tl)}<section><h3>锁痕 / 潮印</h3><ul class="wjwk-rose-timers">${timers}</ul></section><p class="wjwk-muted">数据只从每楼的 &lt;WJWK-settle&gt; 读取，不改角色变量和正文。</p></div>`;
 }
+function xuCard(tl) {
+  const used = tl.xuToday, last = tl.xu[tl.xu.length - 1];
+  const opts = tl.lenders.length ? tl.lenders.map((l, k) => `<label class="wjwk-rose-lender"><input type="radio" name="lender" value="${esc(l.name)}" ${k ? '' : 'checked'}> ${esc(l.name)} <small>（${esc(l.why)} · 第${l.floor}楼）</small></label>`).join('') : '<p class="wjwk-muted">结算记录里还没有亲近或亲密过的人；身边没有这样的人时不能用「续」。</p>';
+  return `<section class="wjwk-rose-card"><h3>永续 · 续</h3><p>今天（${esc(tl.today)}）：<b class="${used ? 'is-urgent' : ''}">${used ? '已用过' : '还没用'}</b>${last ? ` · 上次：第${last.floor}楼${last.who ? `，借自 ${esc(last.who)}` : ''}` : ''}</p><form class="wjwk-rose-xu">${opts}<div class="wjwk-rose-choice"><label><input type="radio" name="stat" value="体力" checked> 补满体力</label><label><input type="radio" name="stat" value="精神"> 补满精神</label></div><button type="button" class="wjwk-primary" data-action="rose-xu" ${tl.lenders.length ? '' : 'disabled'}>写入输入框</button><small class="wjwk-muted">只往输入框写一句意图，不改变量，发送前可以改。${used ? '今天已用过，模型会按规则判定。' : ''}</small></form></section>`;
+}
+const TIERS = '闻拿看瘾';
+function darkCard(tl) {
+  const log = tl.anonLog.slice(-10).reverse().map(a => `<li>第${a.floor}楼 · ${esc(a.day)} · 有人在想着你</li>`).join('') || '<li class="wjwk-muted">还没有记录</li>';
+  const rows = tl.dark.map(d => `<li><b>${d.named ? esc(d.name) : '某人'}</b>${d.heat !== null ? ` · 燥热 ${d.heat}` : ''}${d.tier ? ` · 瘾阶 ${esc(d.tier)}（${TIERS.indexOf(d.tier) + 1}/4）` : ''} · 藏品 ${d.items} 件${d.items >= 5 ? ' <em class="is-urgent">已满，该触发归还/撞见</em>' : ''}</li>`).join('') || '<li class="wjwk-muted">暂无暗潮记录</li>';
+  return `<section class="wjwk-rose-card"><h3>暗潮 · 匿名记录</h3><p>今天“有人在想着你”：<b class="${tl.anonToday >= 2 ? 'is-urgent' : ''}">${tl.anonToday}/2</b> · 累计 ${tl.anonLog.length} 次</p><ul class="wjwk-rose-timers">${log}</ul><h4>暗潮状态</h4><ul class="wjwk-rose-timers">${rows}</ul><small class="wjwk-muted">结算里没有明写身份的一律显示为“某人”。</small></section>`;
+}
+export function xuIntent(lender, stat) { return `（使用「续」，向${lender}借力，补满${stat === '精神' ? '精神' : '体力'}）`; }
 export function saveTimeline(ctx, tl) { try { if (ctx?.chatMetadata) { ctx.chatMetadata[ROSE_KEY] = { savedAt: Date.now(), current: tl.current, overflow: tl.overflow, timers: tl.timers, marks: tl.marks, pattern: tl.pattern, floors: tl.floors.slice(-300) }; (ctx.saveMetadataDebounced || ctx.saveMetadata)?.call(ctx); } } catch { /* 只读面板，保存失败不影响显示 */ } }

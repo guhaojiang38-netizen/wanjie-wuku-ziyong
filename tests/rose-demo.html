@@ -7,8 +7,10 @@ const S=(c)=>({mes:`正文……\n<WJWK-settle>\n本轮收益：\n1. 示例 -- �
 const chat=[S('进度：淫乱度 0/10 → 敏感｜渴慕值 0/10 → 初绽期\n玫瑰印记：小腹·淡玫瑰细线（可见）'),{is_user:true,mes:'x'},
 S('进度：淫乱度 3/10 → 敏感｜渴慕值 6/10 → 初绽期\n淫乱度 0 -> 3\n渴慕值 0 -> 6\n沉溺值 0 -> 12\n禁欲蓄能 0 -> 1'),
 S('进度：淫乱度 12/25 → 舒展｜渴慕值 18/30 → 盛放期\n淫乱度 3 -> 12（敏感）\n渴慕值 6 -> 18（初绽期）\n沉溺值 12 -> 30\n锁痕·某人 剩 5 天\n潮印·他 剩 1 天\n身体印记：颈侧·细线小花·3天；锁骨·花瓣副纹·1天\n印纹样式：缠枝蔷薇'),
-S('进度：淫乱度 20/25 → 舒展｜渴慕值 34/60 → 迷醉期\n渴慕值 20 -> 34\n沉溺值 30 -> 44\n禁欲蓄能 1 -> 2\n渴慕 +1（有人在想着你）')];
-if(q.get('mode')==='marks'){for(const [v,o,p] of [[0,0,''],[15,0,''],[40,0,''],[70,0,'缠枝蔷薇'],[100,12,'金边']]) out.insertAdjacentHTML('beforeend',`<div class="cell">${roseMarkSVG(v,{overflow:o,pattern:p,size:240})}<div>渴慕值 ${v}${v>=100?`（溢出 ${o}/20，${p}）`:''}</div></div>`);}
+{mes:'<meow_FM>time:2026.10.11.周日</meow_FM>'+S('进度：淫乱度 20/25 → 舒展｜渴慕值 18/30 → 盛放期\n淫乱度 12 -> 20\n确认关系：林溪\n暧昧：周野\n渴慕 +1（有人在想着你）\n暗潮·某人 燥热 82 -> 35／瘾阶·拿／藏品：发圈、袜子').mes},
+{is_user:true,mes:'第二天'},
+{mes:'<meow_FM>time:2026.10.12.周一</meow_FM>'+S('进度：淫乱度 20/25 → 舒展｜渴慕值 21/30 → 盛放期\n渴慕值 18 -> 21\n今日“续”已用\n渴慕 +1（有人在想着你）\n暗潮·沈迟 燥热 40 -> 55／瘾阶·闻／藏品：无').mes.replace('1. 示例 -- 已到账','1. 续·体力回满（借自：林溪） -- 已到账')}];
+if(q.get('mode')==='marks'){for(const [v,o,p] of [[0,0,''],[15,0,''],[25,0,''],[40,0,''],[70,0,'缠枝蔷薇'],[100,12,'金边']]) out.insertAdjacentHTML('beforeend',`<div class="cell">${roseMarkSVG(v,{overflow:o,pattern:p,size:240})}<div>渴慕值 ${v}${v>=100?`（溢出 ${o}/20，${p}）`:''}</div></div>`);}
 else if(q.get('v')!==null){const v=+q.get('v');out.innerHTML=`<div class="cell">${roseMarkSVG(v,{overflow:+q.get('o')||0,pattern:q.get('p')||'',size:320})}<div>渴慕值 ${v}</div></div>`;}
 else {const tl=buildTimeline(chat);out.innerHTML=`<div style="max-width:760px;margin:auto;padding:18px;border:1px solid #b0307a;border-radius:14px;background:#1a0b16">${rosePanelHTML(tl)}</div>`;}
 </script></body></html>

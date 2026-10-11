@@ -13,6 +13,7 @@ import { outboxSummary } from './src/outbox.js';
 import { creationMethods } from './src/creation.js';
 import { terminalMethods } from './src/terminal.js';
 import { isMmlc } from './src/mmlc.js';
+import { buildTimeline, rosePanelHTML, saveTimeline } from './src/rose.js';
 import { MODULE_ID, VERSION, assert, amount, normAmount, hash, stable, clone, uid, key, importBook, createPower, upgradeResources, chatHashes, historyChanged, continuesMessage, storyText, narrativeMessages, builtInOperations, normalizeOperation, applyOperation, parseJSON, extractPanelBalances, validateState } from './src/core.js';
 import { getContext, getSettings, getApiKey, saveSettings, getConnectionProfiles, saveConnectionProfile, applyConnectionProfile, deleteConnectionProfile, resolveAccount, events, scope, worldInfoNames, loadBook, ChatStore, installInjection, verifyRoleSaved, verifyReceiptSaved } from './src/host.js';
 import { ModelConnection, operationPrompt, reconcilePrompt, roleMappingPrompt, endpoints, chooseListedModel } from './src/model.js';
@@ -659,6 +660,7 @@ export class WukuApp {
         this.ui.closeDialog(); this.refresh(); return this.notice('已删除当前聊天中的词条接入，历史回执保留。');
       }
       case 'toggle-power': await this.store.transact(next => { const p = next.powers[this.powerId]; assert(p, '词条不存在'); p.active = !p.active; this.record(next, `${p.active ? '恢复' : '暂停'}接入：${p.name}`, ['已记账的永久成果保留'], 'setup', p.id); }); this.plans = []; this.refresh(); return;
+      case 'rose-open': { const ctx = getContext(), tl = buildTimeline(ctx?.chat || []); saveTimeline(ctx, tl); return this.ui.dialog('双面玫瑰', rosePanelHTML(tl)); }
       case 'settings': this.modelListController?.abort(); return this.ui.showSettings(this.settings, { profiles:getConnectionProfiles(), keyPresent: Boolean(this.apiKey), currentModel: getContext()?.getChatCompletionModel?.() || getContext()?.chatCompletionSettings?.model || '' });
       case 'fetch-models': return this.fetchModels(data);
       case 'cancel-model-list': this.modelListController?.abort(); return;

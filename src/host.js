@@ -187,9 +187,11 @@ export class ChatStore {
   }
   async persist(state) {
     const ctx = this.context(), captured = scope(ctx);
-    // A synchronous durable checkpoint comes first. If it fails, no ledger mutation is installed.
-    try { this.storageImpl.setItem(this.backupKey(captured), JSON.stringify({ chatKey: captured.key, state })); }
-    catch { throw new Error('本机备份写入失败，本次操作未提交；请释放存储空间或导出档案'); }
+    // 自用版：本机备份尽力而为。localStorage 满了先清理其他聊天的旧备份再试；仍失败则写 IndexedDB，不再阻止提交。
+    const record = JSON.stringify({ chatKey: captured.key, savedAt: Date.now(), state });
+    let backupNote = '';
+    try { writeBackup(this.storageImpl, this.backupKey(captured), record); }
+    catch { backupNote = '（本机备份空间不足，已改存 IndexedDB；建议点“清理旧备份”）'; idbPut(this.backupKey(captured), record); }
     ctx.chatMetadata.extensions ||= {}; ctx.chatMetadata.extensions[MODULE_ID] = clone(state);
     // Let the UI show the committed local result while server verification runs.
     this.lastSave = { verified: false, note: '已提交本机账本，正在核对酒馆保存…', at: Date.now(), chatKey: captured.key };
@@ -204,7 +206,7 @@ export class ChatStore {
         note = verified ? '已保存，并核对酒馆落盘' : '已保存本机备份；酒馆落盘尚未核对，请保持备份';
       } catch { note = '已保存本机备份；酒馆落盘未核实，可稍后重试保存'; }
     }
-    this.lastSave = { verified, note, at: Date.now(), chatKey: captured.key };
+    this.lastSave = { verified, note: note + backupNote, at: Date.now(), chatKey: captured.key };
     return this.lastSave;
   }
   transact(mutator, { captured = null, facts = true } = {}) {
@@ -291,3 +293,30 @@ export function appendComposerIntent(intent, doc = globalThis.document) {
   if (before.trim() !== value && !before.endsWith('\n\n' + value)) input.value = before ? before + '\n\n' + value : value;
   input.dispatchEvent(new Event('input', { bubbles: true })); input.focus?.();
 }
+
+// ===== 自用版：本机备份管理 =====
+const BACKUP_PREFIX = `${MODULE_ID}:chat:`, BACKUP_KEEP = 5;
+function backupKeys(st) { const out = []; try { for (let i = 0; i < st.length; i++) { const k = st.key(i); if (k && k.startsWith(BACKUP_PREFIX)) out.push(k); } } catch {} return out; }
+function backupAge(st, k) { try { return JSON.parse(st.getItem(k))?.savedAt || 0; } catch { return 0; } }
+export function pruneBackups(st = storage(), { keep = BACKUP_KEEP, except = '' } = {}) {
+  const keys = backupKeys(st).filter(k => k !== except).sort((a, b) => backupAge(st, b) - backupAge(st, a));
+  let removed = 0, freed = 0; for (const k of keys.slice(Math.max(0, keep - (except ? 1 : 0)))) { try { freed += (st.getItem(k) || '').length; st.removeItem(k); removed++; } catch {} }
+  return { removed, freed, kept: Math.min(keys.length, keep) };
+}
+export function backupUsage(st = storage()) { let bytes = 0; const keys = backupKeys(st); for (const k of keys) { try { bytes += (st.getItem(k) || '').length * 2; } catch {} } return { count: keys.length, bytes }; }
+function writeBackup(st, key, record) {
+  try { st.setItem(key, record); return; } catch {}
+  pruneBackups(st, { keep: BACKUP_KEEP, except: key });
+  try { st.setItem(key, record); return; } catch {}
+  pruneBackups(st, { keep: 1, except: key });
+  try { st.removeItem(key); } catch {}
+  st.setItem(key, record);
+}
+function idbPut(key, value) {
+  try {
+    const req = globalThis.indexedDB?.open('wanjie_wuku_ziyong_backup', 1); if (!req) return;
+    req.onupgradeneeded = () => { try { req.result.createObjectStore('b'); } catch {} };
+    req.onsuccess = () => { try { const db = req.result, tx = db.transaction('b', 'readwrite'); tx.objectStore('b').put(value, key); tx.oncomplete = () => db.close(); } catch {} };
+  } catch { /* best effort */ }
+}
+export function clearIdbBackups() { try { globalThis.indexedDB?.deleteDatabase('wanjie_wuku_ziyong_backup'); } catch {} }

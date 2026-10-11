@@ -14,7 +14,7 @@ import { creationMethods } from './src/creation.js';
 import { terminalMethods } from './src/terminal.js';
 import { isMmlc } from './src/mmlc.js';
 import { buildTimeline, rosePanelHTML, saveTimeline, xuIntent } from './src/rose.js';
-import { appendComposerIntent } from './src/host.js';
+import { appendComposerIntent, pruneBackups, backupUsage, clearIdbBackups } from './src/host.js';
 import { MODULE_ID, VERSION, assert, amount, normAmount, hash, stable, clone, uid, key, importBook, createPower, upgradeResources, chatHashes, historyChanged, continuesMessage, storyText, narrativeMessages, builtInOperations, normalizeOperation, applyOperation, parseJSON, extractPanelBalances, validateState } from './src/core.js';
 import { getContext, getSettings, getApiKey, saveSettings, getConnectionProfiles, saveConnectionProfile, applyConnectionProfile, deleteConnectionProfile, resolveAccount, events, scope, worldInfoNames, loadBook, ChatStore, installInjection, verifyRoleSaved, verifyReceiptSaved } from './src/host.js';
 import { ModelConnection, operationPrompt, reconcilePrompt, roleMappingPrompt, endpoints, chooseListedModel } from './src/model.js';
@@ -512,6 +512,7 @@ export class WukuApp {
     const snapshot = () => this.contextSnapshot(), power = () => this.store.read().powers[this.powerId];
     switch (name) {
       case 'runtime-log-open': this.ui.showRuntimeLog(this.runtimeLog);return;
+      case 'prune-backups': { const before = backupUsage(); const r = pruneBackups(undefined, { keep: 1, except: (() => { try { return this.store.backupKey(scope(getContext())); } catch { return ''; } })() }); clearIdbBackups(); try { this.runtimeLog?.clear?.(); } catch {} const after = backupUsage(); return this.ui.dialog('清理旧备份', `<p>已删除 ${r.removed} 份其他聊天的本机备份，释放约 ${Math.round(r.freed * 2 / 1024)} KB。</p><p class="wjwk-muted">当前聊天的备份保留；各聊天的档案仍保存在酒馆聊天文件里，不受影响。剩余 ${after.count} 份，约 ${Math.round(after.bytes / 1024)} KB（清理前 ${before.count} 份）。</p>`); }
       case 'runtime-log-detail': this.runtimeLog.detail=Boolean(data.enabled);return;
       case 'runtime-log-clear': this.runtimeLog.clear();this.ui.showRuntimeLog(this.runtimeLog);return;
       case 'runtime-log-export': {const blob=new Blob([JSON.stringify(this.runtimeLog.export(),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='万界武库运行日志-'+Date.now()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;}

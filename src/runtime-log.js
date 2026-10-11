@@ -11,7 +11,7 @@ export class RuntimeLog{
  rows(account=this.account()){
   if(!this.accounts.has(account)){let rows=[];try{const raw=this.storage?.getItem(this.key(account));if(raw&&raw.length<=1000000){const parsed=JSON.parse(raw);if(Array.isArray(parsed))rows=parsed.filter(r=>r&&typeof r.id==='string'&&Array.isArray(r.steps)).slice(-40).map(r=>r.status==='运行中'?{...r,status:'页面已关闭，任务未完成'}:r);}}catch{this.storageFailed=true;}this.accounts.set(account,rows);}return this.accounts.get(account);
  }
- persist(account){const rows=this.rows(account);while(rows.length>40||JSON.stringify(rows).length>900000){if(rows.length===1){rows[0].steps=[];rows[0].detailOmitted=true;break;}rows.shift();}try{this.storage?.setItem(this.key(account),JSON.stringify(rows));}catch{this.storageFailed=true;}}
+ persist(account){const rows=this.rows(account);while(rows.length>20||JSON.stringify(rows).length>200000){if(rows.length===1){rows[0].steps=[];rows[0].detailOmitted=true;break;}rows.shift();}try{this.storage?.setItem(this.key(account),JSON.stringify(rows));}catch{this.storageFailed=true;}}
  begin(label,metadata={}){const scope=this.scope(),account=this.account(scope);const id=this.now().toString(36)+'-'+(++this.sequence);const ticket={account,id};const row=redactLog({id,version:this.version,scopeHash:hash(scope),label,startedAt:this.now(),status:'运行中',steps:[],detail:this.detail,...metadata},this.secret());this.rows(account).push(row);this.persist(account);return ticket;}
  find(ticket){return ticket&&this.rows(ticket.account).find(r=>r.id===ticket.id);}
  patch(ticket,data){const row=this.find(ticket);if(!row)return;Object.assign(row,redactLog(data,this.secret()));this.persist(ticket.account);}

@@ -667,7 +667,7 @@ Object.assign(WorkbenchUI.prototype,runtimeLogUIMethods);
 export function ziyongBookRank(name) { const n = String(name || ''); if (!n.includes('万界武库')) return -1; if (/万界武库\s*[_\-·]?\s*v6(?!\d)/i.test(n)) return 100000; const v = n.match(/v(\d+(?:\.\d+)?)/i); if (v) return 1000 + Math.round(parseFloat(v[1]) * 10); if (/万界武库_fixed/.test(n)) return 500; return 1; }
 export function ziyongBestBook(names) { let best = null, r = 0; for (const n of names || []) { const k = ziyongBookRank(n); if (k > r) { r = k; best = n; } } return best; }
 const ZIYONG_PRIMARY = /^双面玫瑰·金手指总则/;
-const ZIYONG_ENTRIES = [/^万界武库思维链/, /^永续/, /^心相武装/, /^钟灵毓秀/, /^万界武库·使用说明/, /^帝王技艺/, /^大贤者/, /^上位替代/, /^八风编织/, ZIYONG_PRIMARY, /^淫乱度与身体进化/, /^双生体质·媚肉锁/, /^双生体质·逆潮/, /^双面玫瑰·催情执行提醒/, /^双面玫瑰·暗潮出口/];
+const ZIYONG_ENTRIES = [/^万界武库思维链/, /^(?:永续|不凋)/, /^心相武装/, /^钟灵毓秀/, /^万界武库·使用说明/, /^帝王技艺/, /^大贤者/, /^上位替代/, /^八风编织/, ZIYONG_PRIMARY, /^(?:淫乱度|绽度)与身体进化/, /^双生体质·(?:媚肉锁|缠枝印)/, /^双生体质·(?:逆潮|月汐痕)/, /^双面玫瑰·催情执行提醒/, /^双面玫瑰·暗潮出口/];
 const nameHit = e => ZIYONG_ENTRIES.some(r => r.test(String(e?.name || '').trim()));
 let ziyongCache = { catalog: null, book: null };
 function ziyongBook(catalog) { if (!catalog) return null; if (ziyongCache.catalog === catalog) return ziyongCache.book; const books = [...new Set(catalog.filter(nameHit).map(e => e.book))]; const book = books.sort((a, b) => ziyongBookRank(b) - ziyongBookRank(a))[0] ?? null; ziyongCache = { catalog, book }; return book; }
